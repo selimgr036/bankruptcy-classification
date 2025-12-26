@@ -23,3 +23,13 @@ def preprocess_data(df):
     y = df['target'].values
     
     return X, y, feature_cols
+
+def split_by_year(df, train_end_year=2011, test_start_year=2015):
+    """Split data by year for temporal validation"""
+    train_mask = df['year'] <= train_end_year
+    test_mask = df['year'] >= test_start_year
+    
+    train_df = df[train_mask]
+    test_df = df[test_mask]
+    
+    return train_df, test_df
