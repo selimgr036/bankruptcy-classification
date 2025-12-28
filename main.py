@@ -4,6 +4,8 @@ from src.models import get_logistic_regression, get_random_forest
 from src.evaluation import evaluate_model
 from sklearn.preprocessing import StandardScaler
 from src.models import get_logistic_regression, get_random_forest, get_xgboost
+from src.evaluation import evaluate_model, plot_roc_curves
+from pathlib import Path
 
 # Load and split
 df = load_data()
@@ -29,3 +31,14 @@ for name, (model, X_tr, X_te) in models.items():
     model.fit(X_tr, y_train)
     metrics, _ = evaluate_model(model, X_te, y_test)
     print(f"{name} - Accuracy: {metrics['accuracy']:.4f}, F1: {metrics['f1']:.4f}")
+
+# Store results for plotting
+results_for_plot = {}
+for name, (model, X_tr, X_te) in models.items():
+    model.fit(X_tr, y_train)
+    results_for_plot[name] = (model, X_te, y_test)
+
+# Plot ROC curves
+Path("results/figures").mkdir(parents=True, exist_ok=True)
+plot_roc_curves(results_for_plot, "results/figures/roc_curves.png")
+print("\nSaved ROC curves to results/figures/roc_curves.png")
