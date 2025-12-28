@@ -1,0 +1,8 @@
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+
+def get_logistic_regression(random_state=42):
+    return LogisticRegression(random_state=random_state, max_iter=1000, class_weight='balanced')
+
+def get_random_forest(random_state=42):
+    return RandomForestClassifier(n_estimators=100, random_state=random_state, class_weight='balanced', n_jobs=-1)
