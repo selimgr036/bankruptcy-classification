@@ -2,6 +2,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, roc_auc_score
 import seaborn as sns
+import numpy as np
 from sklearn.metrics import confusion_matrix
 
 def evaluate_model(model, X_test, y_test):
@@ -57,6 +58,26 @@ def plot_confusion_matrices(results_dict, save_path=None):
         axes[idx].set_xlabel('Predicted Label')
     
     plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+def plot_feature_importance(model, feature_names, model_name, save_path=None):
+    """Plot feature importance for tree models"""
+    if not hasattr(model, 'feature_importances_'):
+        return
+    
+    importances = model.feature_importances_
+    indices = np.argsort(importances)[::-1][:15]
+    
+    plt.figure(figsize=(10, 8))
+    plt.barh(range(15), importances[indices])
+    plt.yticks(range(15), [feature_names[i] for i in indices])
+    plt.xlabel('Feature Importance')
+    plt.title(f'Feature Importance - {model_name}')
+    plt.gca().invert_yaxis()
+    plt.tight_layout()
+    
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
