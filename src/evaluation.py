@@ -120,3 +120,24 @@ def plot_feature_importance(model, feature_names, model_name, save_path=None):
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
+
+def find_optimal_threshold(y_true, y_pred_proba, metric='f1'):
+    """Find optimal threshold"""
+    thresholds = np.linspace(0.1, 0.9, 41)
+    best_threshold = 0.5
+    best_score = 0
+    
+    for threshold in thresholds:
+        y_pred = (y_pred_proba >= threshold).astype(int)
+        if metric == 'f1':
+            score = f1_score(y_true, y_pred, zero_division=0)
+        elif metric == 'precision':
+            score = precision_score(y_true, y_pred, zero_division=0)
+        else:
+            score = recall_score(y_true, y_pred, zero_division=0)
+        
+        if score > best_score:
+            best_score = score
+            best_threshold = threshold
+    
+    return best_threshold
