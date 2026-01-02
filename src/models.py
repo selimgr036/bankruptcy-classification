@@ -2,6 +2,11 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 from sklearn.dummy import DummyClassifier
+from sklearn.svm import SVC
+
+def get_svm(random_state=42):
+    """SVM with RBF kernel"""
+    return SVC(kernel='rbf', random_state=random_state, class_weight='balanced', probability=True)
 
 def get_baseline(random_state=42):
     """Baseline that always predicts majority class"""

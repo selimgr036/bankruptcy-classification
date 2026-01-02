@@ -21,9 +21,11 @@ X_test_scaled = scaler.transform(X_test)
 
 # Train and evaluate models
 models = {
+    'Baseline': (get_baseline(), X_train, X_test),
     'Logistic Regression': (get_logistic_regression(), X_train_scaled, X_test_scaled),
     'Random Forest': (get_random_forest(), X_train, X_test),
-    'XGBoost': (get_xgboost(), X_train, X_test)
+    'XGBoost': (get_xgboost(), X_train, X_test),
+    'SVM': (get_svm(), X_train_scaled, X_test_scaled)
 }
 
 for name, (model, X_tr, X_te) in models.items():
