@@ -4,6 +4,45 @@ from sklearn.metrics import roc_curve, roc_auc_score
 import seaborn as sns
 import numpy as np
 from sklearn.metrics import confusion_matrix
+import shap
+
+def compute_shap_values(model, X_sample, model_name):
+    """Compute SHAP values"""
+    try:
+        if 'RandomForest' in type(model).__name__ or 'XGB' in type(model).__name__:
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_sample)
+            if isinstance(shap_values, list):
+                shap_values = shap_values[1]  # positive class
+        elif model_name == 'Logistic Regression':
+            explainer = shap.LinearExplainer(model, X_sample)
+            shap_values = explainer.shap_values(X_sample)
+            if isinstance(shap_values, list):
+                shap_values = shap_values[1]
+        else:
+            explainer = shap.KernelExplainer(model.predict_proba, X_sample[:50])
+            shap_values = explainer.shap_values(X_sample[:50])
+            if isinstance(shap_values, list):
+                shap_values = shap_values[1]
+        
+        return shap_values, explainer, X_sample
+    except Exception as e:
+        print(f"SHAP failed for {model_name}: {e}")
+        return None, None, None
+
+def plot_shap_summary(shap_values, X_sample, feature_names, model_name, save_path=None):
+    """Plot SHAP summary"""
+    if shap_values is None:
+        return
+    
+    plt.figure(figsize=(10, 8))
+    shap.summary_plot(shap_values, X_sample, feature_names=feature_names, show=False)
+    plt.title(f'SHAP Summary - {model_name}')
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
 
 def evaluate_model(model, X_test, y_test):
     """Evaluate model and return metrics"""
