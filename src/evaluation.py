@@ -5,6 +5,32 @@ import seaborn as sns
 import numpy as np
 from sklearn.metrics import confusion_matrix
 import shap
+import pandas as pd
+from sklearn.metrics import precision_recall_curve, average_precision_score
+
+def plot_pr_curves(results_dict, save_path=None):
+    """Plot Precision-Recall curves"""
+    plt.figure(figsize=(10, 8))
+    
+    for model_name, results in results_dict.items():
+        y_test = results['y_test']
+        y_pred_proba = results.get('y_pred_proba')
+        
+        if y_pred_proba is not None:
+            precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
+            pr_auc = average_precision_score(y_test, y_pred_proba)
+            plt.plot(recall, precision, label=f"{model_name} (AUC={pr_auc:.3f})")
+    
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curves')
+    plt.legend()
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
 
 def compute_shap_values(model, X_sample, model_name):
     """Compute SHAP values"""
@@ -141,3 +167,17 @@ def find_optimal_threshold(y_true, y_pred_proba, metric='f1'):
             best_threshold = threshold
     
     return best_threshold
+
+
+def save_metrics(results_dict, save_path):
+    """Save metrics to CSV"""
+    metrics_list = []
+    
+    for model_name, results in results_dict.items():
+        metrics = results['metrics'].copy()
+        metrics['model'] = model_name
+        metrics_list.append(metrics)
+    
+    df = pd.DataFrame(metrics_list)
+    df.to_csv(save_path, index=False)
+    return df
