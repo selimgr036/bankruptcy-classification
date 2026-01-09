@@ -11,12 +11,27 @@ from tabulate import tabulate
 
 
 def ensure_directory(path):
-    """Ensure a directory exists, creating it if necessary"""
+    """
+    Ensure a directory exists, creating it if necessary.
+    
+    Args:
+        path (str or Path): Path to the directory
+    """
     Path(path).mkdir(parents=True, exist_ok=True)
 
 
 def create_results_directories(project_root=None):
-    """Create results directory structure if it doesn't exist"""
+    """
+    Create results directory structure if it doesn't exist.
+    
+    Creates:
+    - results/metrics/
+    - results/figures/
+    
+    Args:
+        project_root (str or Path, optional): Project root directory.
+            If None, assumes current working directory.
+    """
     if project_root is None:
         project_root = Path.cwd()
     else:
@@ -27,11 +42,21 @@ def create_results_directories(project_root=None):
 
 
 def format_metrics_table(df_metrics):
-    """Format metrics DataFrame as a nice table for terminal output"""
+    """
+    Format metrics DataFrame as a nice table for terminal output.
+    
+    Args:
+        df_metrics (pd.DataFrame): DataFrame with model metrics
+        
+    Returns:
+        str: Formatted table string
+    """
+    # Round numeric columns to 4 decimal places
     numeric_cols = df_metrics.select_dtypes(include=['float64', 'int64']).columns
     df_formatted = df_metrics.copy()
     df_formatted[numeric_cols] = df_formatted[numeric_cols].round(4)
     
+    # Create table using tabulate
     table = tabulate(
         df_formatted,
         headers='keys',
@@ -44,12 +69,19 @@ def format_metrics_table(df_metrics):
 
 
 def print_metrics_summary(df_metrics):
-    """Print a formatted metrics summary table to terminal"""
+    """
+    Print a formatted metrics summary table to terminal.
+    
+    Args:
+        df_metrics (pd.DataFrame): DataFrame with model metrics
+    """
     print("\n" + "="*80)
     print("MODEL PERFORMANCE SUMMARY")
     print("="*80)
     
+    # If we have both default and optimized metrics, show them separately
     if 'threshold_type' in df_metrics.columns:
+        # Default threshold metrics
         df_default = df_metrics[df_metrics['threshold_type'] == 'default'].copy()
         if not df_default.empty:
             df_default = df_default.drop(columns=['threshold_type', 'threshold'], errors='ignore')
@@ -57,6 +89,7 @@ def print_metrics_summary(df_metrics):
             print("-" * 80)
             print(format_metrics_table(df_default))
         
+        # Optimized threshold metrics
         df_optimized = df_metrics[df_metrics['threshold_type'] == 'optimized'].copy()
         if not df_optimized.empty:
             df_opt_display = df_optimized[['model', 'threshold', 'accuracy', 'precision', 'recall', 'f1']].copy()
@@ -64,18 +97,43 @@ def print_metrics_summary(df_metrics):
             print("-" * 80)
             print(format_metrics_table(df_opt_display))
     else:
+        # Original format if no threshold optimization
         print(format_metrics_table(df_metrics))
     
     print("="*80 + "\n")
 
 
 def get_project_root():
-    """Get the project root directory"""
+    """
+    Get the project root directory.
+    
+    Assumes this file is in src/ directory, so project root is parent.
+    
+    Returns:
+        Path: Project root directory
+    """
     return Path(__file__).parent.parent
 
 
 def compare_against_baseline(all_results, metric='f1', threshold_type='optimized'):
-    """Compare all models against the baseline model"""
+    """
+    Compare all models against the baseline model and identify which models beat it.
+    
+    Success is defined as: models beat baseline on temporal test set.
+    
+    Args:
+        all_results (dict): Dictionary mapping model names to evaluation results
+        metric (str): Metric to compare (default: 'f1'). Options: 'f1', 'accuracy', 'precision', 'recall', 'roc_auc', 'pr_auc'
+        threshold_type (str): Which threshold to use for comparison (default: 'optimized')
+            Options: 'optimized' (use optimized threshold metrics) or 'default' (use default threshold metrics)
+    
+    Returns:
+        dict: Dictionary with:
+            - 'baseline_metric': Baseline metric value
+            - 'models_beat_baseline': List of model names that beat baseline
+            - 'models_below_baseline': List of model names that don't beat baseline
+            - 'comparison': Dictionary mapping model names to their metric values and comparison status
+    """
     if 'Baseline' not in all_results:
         return {
             'baseline_metric': None,
@@ -85,11 +143,14 @@ def compare_against_baseline(all_results, metric='f1', threshold_type='optimized
             'error': 'Baseline model not found in results'
         }
     
+    # Get baseline metric (always use default since baseline doesn't optimize thresholds)
     baseline_results = all_results['Baseline']
     baseline_metrics = baseline_results['metrics']
     
+    # For ML models, use optimized if requested (even if baseline doesn't have it)
+    # This is fair because we're comparing best ML performance vs baseline's fixed performance
     if threshold_type == 'optimized':
-        effective_threshold_type = 'optimized'
+        effective_threshold_type = 'optimized'  # Use optimized for ML models
     else:
         effective_threshold_type = 'default'
     
@@ -104,6 +165,7 @@ def compare_against_baseline(all_results, metric='f1', threshold_type='optimized
             'error': f'Baseline {metric} metric not available'
         }
     
+    # Compare all other models against baseline
     models_beat_baseline = []
     models_below_baseline = []
     comparison = {}
@@ -112,6 +174,7 @@ def compare_against_baseline(all_results, metric='f1', threshold_type='optimized
         if model_name == 'Baseline':
             continue
         
+        # Get model metric (use effective_threshold_type to ensure fair comparison)
         if effective_threshold_type == 'optimized' and 'metrics_at_optimal' in results:
             model_metrics = results['metrics_at_optimal']
             default_metrics = results.get('metrics', {})
@@ -129,6 +192,7 @@ def compare_against_baseline(all_results, metric='f1', threshold_type='optimized
             }
             continue
         
+        # Check if optimized metric is worse than default (potential overfitting warning)
         optimization_warning = None
         if effective_threshold_type == 'optimized' and default_metrics:
             default_metric = default_metrics.get(metric, None)
@@ -140,9 +204,11 @@ def compare_against_baseline(all_results, metric='f1', threshold_type='optimized
         
         beats_baseline = model_metric > baseline_metric
         improvement = model_metric - baseline_metric
+        # Handle division by zero for percentage improvement
         if baseline_metric > 0:
             improvement_pct = (improvement / baseline_metric * 100)
         else:
+            # When baseline is 0, any improvement is infinite percentage
             improvement_pct = float('inf') if improvement > 0 else 0
         
         comparison[model_name] = {
@@ -171,7 +237,14 @@ def compare_against_baseline(all_results, metric='f1', threshold_type='optimized
 
 
 def print_baseline_comparison(all_results, metric='f1', threshold_type='optimized'):
-    """Print a formatted comparison of all models against the baseline"""
+    """
+    Print a formatted comparison of all models against the baseline.
+    
+    Args:
+        all_results (dict): Dictionary mapping model names to evaluation results
+        metric (str): Metric to compare (default: 'f1')
+        threshold_type (str): Which threshold to use (default: 'optimized')
+    """
     comparison_result = compare_against_baseline(all_results, metric=metric, threshold_type=threshold_type)
     
     if 'error' in comparison_result:
@@ -226,7 +299,9 @@ def print_baseline_comparison(all_results, metric='f1', threshold_type='optimize
                   f"({comp['improvement']:.4f}, {pct_str})")
         print()
     
+    # Summary
     total_models = len(comparison)
     success_rate = len(models_beat) / total_models * 100 if total_models > 0 else 0
     print(f"Success Rate: {len(models_beat)}/{total_models} models beat baseline ({success_rate:.1f}%)")
     print("="*80 + "\n")
+
