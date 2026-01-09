@@ -8,7 +8,7 @@ This project predicts bankruptcy of firms using machine learning with **strictly
 
 ### Key Features
 
-- **Temporal Validation**: Strict time-based train/test split (train: 1999-2011, test: 2015-2018)
+- **Temporal Validation**: Strict time-based train/validation/test split (train: 1999-2011, validation: 2012-2014, test: 2015-2018)
 - **Baseline Model**: Minimal reference (DummyClassifier - always predicts majority class)
 - **Four ML Models**: Logistic Regression, Random Forest, XGBoost, and SVM (RBF kernel)
 - **Success Criteria**: Models must beat baseline on temporal test set
@@ -48,7 +48,7 @@ The test set serves as a means to assess the predictive capability of models in 
 
 ## Installation
 
-**Important**: This project requires Python 3.9. The package versions have been carefully selected for compatibility with Python 3.9.6.
+**Important**: This project requires Python 3.11.0. The package versions have been carefully selected for compatibility with Python 3.11.0.
 
 ### Using Conda
 
@@ -82,23 +82,36 @@ python main.py
 
 **Configuration Options:**
 
-You can customize the pipeline by editing the configuration at the bottom of `main.py`:
+You can customize the pipeline using command-line arguments:
 
-```python
-USE_SMOTE = True  # Set to True to use SMOTE for class balancing (default: True)
-OPTIMIZE_THRESHOLDS = True  # Set to True to find optimal thresholds (default: True)
+```bash
+# Default behavior (SMOTE enabled, threshold optimization enabled)
+python main.py
+
+# Disable SMOTE for class balancing
+python main.py --no-smote
+
+# Disable threshold optimization
+python main.py --no-threshold-opt
+
+# Disable both options
+python main.py --no-smote --no-threshold-opt
 ```
 
-**New Features:**
+**Available Options:**
+- `--no-smote`: Disable SMOTE (Synthetic Minority Over-sampling) for class balancing (default: SMOTE is enabled)
+- `--no-threshold-opt`: Disable threshold optimization (default: threshold optimization is enabled)
+
+**Features:**
 - **Threshold Optimization**: Automatically finds optimal decision thresholds for better precision/recall balance (enabled by default)
-- **SMOTE Resampling**: Class balancing using SMOTE (Synthetic Minority Over-sampling) (enabled by default)
+- **SMOTE Resampling**: Class balancing using SMOTE (Synthetic Minority Over-sampling) (enabled by default, use `--no-smote` to disable)
 - **SVM**: SVM is always included in the model training pipeline
 - **Improved Metrics**: Reports both default (0.5) and optimized threshold metrics
 
 This will:
 
 1. Load and preprocess the dataset from `data/raw/american_bankruptcy.csv`
-2. Perform temporal train/test split (train: 1999-2011, test: 2015-2018)
+2. Perform temporal train/validation/test split (train: 1999-2011, validation: 2012-2014, test: 2015-2018)
 3. Train baseline model (DummyClassifier - majority class) and four ML models (Logistic Regression, Random Forest, XGBoost, SVM)
 4. Evaluate all models with comprehensive metrics
 5. Compare all models against baseline and report which models beat it (SUCCESS)
@@ -185,8 +198,9 @@ The project computes the following metrics for each model:
 This project uses **strict temporal validation** where:
 
 - Models are trained only on historical data (1999-2011)
+- Models are validated on intermediate data (2012-2014) for threshold optimization
 - Models are tested on future data (2015-2018)
-- No random shuffling or data leakage between train and test sets
+- No random shuffling or data leakage between train, validation, and test sets
 - This simulates real-world deployment where we predict future bankruptcies based on past patterns
 
 This approach is crucial for financial prediction tasks where temporal order matters and we want to assess how well models generalize to future time periods.
@@ -196,7 +210,7 @@ This approach is crucial for financial prediction tasks where temporal order mat
 To ensure reproducibility:
 
 - All models use `random_state=42`
-- Temporal split boundaries are fixed (train: ≤2011, test: 2015-2018)
+- Temporal split boundaries are fixed (train: ≤2011, validation: 2012-2014, test: 2015-2018)
 - SHAP computation uses fixed random seed
 - Data preprocessing is deterministic
 
@@ -204,9 +218,9 @@ Running `python main.py` multiple times will produce identical results.
 
 ## Dependencies
 
-Key dependencies (tested with Python 3.9.6):
+Key dependencies (tested with Python 3.11.0):
 
-- **Python**: 3.9 (tested with 3.9.6)
+- **Python**: 3.11.0
 - **pandas**: 2.0.3
 - **numpy**: 1.26.4
 - **scikit-learn**: 1.4.2
@@ -218,7 +232,7 @@ Key dependencies (tested with Python 3.9.6):
 - **tabulate**: 0.9.0
 
 **Version Compatibility Notes**:
-- These versions are specifically chosen for compatibility with Python 3.9
+- These versions are specifically chosen for compatibility with Python 3.11.0
 - pandas 2.0.3 requires numpy < 2.0 (hence numpy 1.26.4)
 - imbalanced-learn 0.11.0 requires scikit-learn 1.4.2 (not 1.5+)
 - Using newer versions may cause binary incompatibility errors
@@ -242,12 +256,13 @@ If you encounter errors like `ValueError: numpy.dtype size changed`, this indica
 If you see "Warning: imbalanced-learn not installed", check that:
 - `imbalanced-learn==0.11.0` is installed
 - `scikit-learn==1.4.2` is installed (not 1.5+)
-- Both packages are compatible with Python 3.9
+- Both packages are compatible with Python 3.11.0
 
 ## Notes
 
 - The dataset is complete with no missing values, so no imputation is needed
 - Feature scaling is applied automatically for models that require it (SVM, Logistic Regression)
+- **SMOTE/Scaling Order Limitation**: SMOTE is applied to unscaled features before scaling. This is the standard approach (SMOTE should be applied before scaling to avoid scaling synthetic samples), but it means that synthetic samples generated by SMOTE are created in the original feature space and then scaled. This design choice is intentional and follows best practices for handling imbalanced data with SMOTE.
 - **SVM Optimization**: 
   - Due to SVM's O(n²) to O(n³) training complexity, the pipeline uses a stratified sample of 20,000 training instances for SVM to significantly speed up training (from hours to minutes)
   - Stratified sampling maintains class balance for better performance
