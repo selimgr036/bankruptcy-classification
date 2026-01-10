@@ -125,11 +125,13 @@ After running the pipeline, you'll find:
 ```
 results/
 ├── metrics/
-│   └── model_metrics.csv          # All model metrics in CSV format
+│   ├── model_metrics.csv          # All model metrics in CSV format
+│   └── thresholds.json            # Optimized thresholds per model
 └── figures/
     ├── roc_curves.png             # ROC curves for all models
     ├── pr_curves.png              # Precision-Recall curves
-    ├── confusion_matrices.png     # Confusion matrices for all models
+    ├── confusion_matrices_default.png    # Confusion matrices at default threshold
+    ├── confusion_matrices_optimized.png  # Confusion matrices at optimized thresholds
     ├── feature_importance_*.png   # Feature importance (tree models)
     └── shap_summary_*.png         # SHAP summary plots
 ```
